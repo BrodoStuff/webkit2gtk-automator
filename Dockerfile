@@ -78,14 +78,6 @@ RUN pacman -Syu --noconfirm && \
         zlib \
     && pacman -Scc --noconfirm
 
-# Import WebKitGTK PGP signing keys
-RUN gpg --keyserver keyserver.ubuntu.com --recv-keys \
-        5AA3BC334FD7E3369E7C77B291C559DBE4C9123B \
-        013A0127AC9C65B34FFA62526C1009B693975393 || \
-    gpg --keyserver hkps://keys.openpgp.org --recv-keys \
-        5AA3BC334FD7E3369E7C77B291C559DBE4C9123B \
-        013A0127AC9C65B34FFA62526C1009B693975393
-
 # Non-root build user (makepkg refuses to run as root)
 RUN useradd -m -G wheel builduser && \
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers

@@ -28,6 +28,23 @@ fi
 sudo -u builduser git config --global user.name  "${AUR_MAINTAINER_NAME:-webkit2gtk-automator}"
 sudo -u builduser git config --global user.email "${AUR_MAINTAINER_EMAIL:-noreply@localhost}"
 
+# Import WebKitGTK PGP signing keys into builduser's keyring
+# makepkg verifies the source tarball signature against these keys.
+# Try the bundled local keys first (no network needed), then fall back to keyservers.
+echo "[entrypoint] Importing WebKitGTK PGP signing keys"
+if ls /workspace/webkit2gtk/keys/pgp/*.asc &>/dev/null; then
+    sudo -u builduser gpg --import /workspace/webkit2gtk/keys/pgp/*.asc
+    echo "[entrypoint] PGP keys imported from local bundle"
+else
+    sudo -u builduser gpg --keyserver keyserver.ubuntu.com --recv-keys \
+        5AA3BC334FD7E3369E7C77B291C559DBE4C9123B \
+        013A0127AC9C65B34FFA62526C1009B693975393 || \
+    sudo -u builduser gpg --keyserver hkps://keys.openpgp.org --recv-keys \
+        5AA3BC334FD7E3369E7C77B291C559DBE4C9123B \
+        013A0127AC9C65B34FFA62526C1009B693975393
+    echo "[entrypoint] PGP keys imported from keyserver"
+fi
+
 # Drop to builduser and start the polling loop
 echo "[entrypoint] Starting polling loop, interval: ${POLL_INTERVAL_SECONDS}s"
 exec sudo -u builduser bash -c '
