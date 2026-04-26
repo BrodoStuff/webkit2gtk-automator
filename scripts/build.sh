@@ -31,6 +31,11 @@ find . -maxdepth 1 -name '*.pkg.tar.zst' -delete
 find . -maxdepth 1 -name '*.pkg.tar.zst.sig' -delete
 
 # Build
+# Use all available cores. MAKEFLAGS is respected by makepkg and passed
+# through to cmake/ninja. NPROC can be overridden via the environment.
+nproc="${NPROC:-$(nproc)}"
+export MAKEFLAGS="-j${nproc}"
+log "Building with ${nproc} cores"
 log "Running makepkg in ${SRC_DIR}"
 # --syncdeps  : install missing makedepends automatically
 # --noconfirm : do not ask for confirmations

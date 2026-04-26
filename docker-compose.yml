@@ -8,6 +8,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    # By default Docker exposes all host CPUs to the container.
+    # You can cap it here or set NPROC in .env to limit parallelism at the build level.
+    # cpus: '4'
     volumes:
       # Entire project mounted so the container can read/write state, artifacts,
       # and the webkit2gtk / webkit2gtk-bin git repos.
