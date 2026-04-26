@@ -1,0 +1,20 @@
+# Secrets
+.env
+
+# Build artifacts
+state/artifacts/
+state/build.log
+state/cron.log
+
+# AUR SSH key (if stored locally)
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Docker
+.docker/
+
+# Misc
+*.tmp
+*.swp

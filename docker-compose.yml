@@ -1,0 +1,18 @@
+services:
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: webkit2gtk-builder
+    container_name: webkit2gtk-builder
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Entire project mounted so the container can read/write state, artifacts,
+      # and the webkit2gtk / webkit2gtk-bin git repos.
+      - .:/workspace
+      # AUR SSH private key (path set in .env via AUR_SSH_KEY_PATH)
+      - ${AUR_SSH_KEY_PATH}:/run/secrets/aur_id_rsa:ro
+    # No ports needed – this is a pure background worker.
+    # Logs are available via: docker compose logs -f
