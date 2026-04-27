@@ -60,6 +60,8 @@ echo "[entrypoint] Starting polling loop, interval: ${POLL_INTERVAL_SECONDS}s"
 exec sudo -u builduser --preserve-env HOME=/home/builduser bash -c '
     set -euo pipefail
     POLL_INTERVAL_SECONDS="'"${POLL_INTERVAL_SECONDS}"'"
+    NPROC="'"${NPROC:-}"'"
+    [[ -n "${NPROC}" ]] && export NPROC
     while true; do
         /workspace/scripts/check-update.sh
         echo "[entrypoint] Sleeping for ${POLL_INTERVAL_SECONDS}s"
