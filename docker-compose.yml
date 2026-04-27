@@ -8,14 +8,16 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    # By default Docker exposes all host CPUs to the container.
-    # You can cap it here or set NPROC in .env to limit parallelism at the build level.
-    # cpus: '4'
+    # NPROC in .env controls both the number of compiler jobs (make -jN) and
+    # the CPU cap enforced by the kernel. Set it once, it applies everywhere
+    cpus: '${NPROC:-4}'
+    mem_limit: 12g
+    memswap_limit: 12g
     volumes:
       # Entire project mounted so the container can read/write state, artifacts,
-      # and the webkit2gtk / webkit2gtk-bin git repos.
+      # and the webkit2gtk / webkit2gtk-bin git repos
       - .:/workspace
       # AUR SSH private key (path set in .env via AUR_SSH_KEY_PATH)
       - ${AUR_SSH_KEY_PATH}:/run/secrets/aur_id_rsa:ro
-    # No ports needed – this is a pure background worker.
+    # No ports needed – this is a pure background worker
     # Logs are available via: docker compose logs -f

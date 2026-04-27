@@ -37,16 +37,16 @@ cp .env.example .env
 
 Edit `.env` and fill in:
 
-| Variable                  | Description                                                           |
-|---------------------------|-----------------------------------------------------------------------|
-| `GITHUB_TOKEN`            | Personal access token with **Contents: read/write** on this repo      |
-| `GITHUB_REPO`             | `Brodino96/webkit2gtk-automator`                                      |
-| `AUR_SSH_KEY_PATH`        | Absolute path to the SSH private key registered on your AUR account   |
-| `AUR_PACKAGE_NAME`        | `webkit2gtk-bin`                                                      |
-| `AUR_MAINTAINER_NAME`     | Your name (written into the published PKGBUILD)                       |
-| `AUR_MAINTAINER_EMAIL`    | Your email (written into the published PKGBUILD)                      |
-| `POLL_INTERVAL_SECONDS`   | How often to check for updates, in seconds (default: `3600`)          |
-| `NPROC`                   | CPU cores to use for compilation (default: all available)             |
+| Variable                  | Description                                                                       |
+|---------------------------|-----------------------------------------------------------------------------------|
+| `GITHUB_TOKEN`            | Personal access token with **Contents: read/write** on this repo                  |
+| `GITHUB_REPO`             | `Brodino96/webkit2gtk-automator`                                                  |
+| `AUR_SSH_KEY_PATH`        | Absolute path to the SSH private key registered on your AUR account               |
+| `AUR_PACKAGE_NAME`        | `webkit2gtk-bin`                                                                  |
+| `AUR_MAINTAINER_NAME`     | Your name (written into the published PKGBUILD)                                   |
+| `AUR_MAINTAINER_EMAIL`    | Your email (written into the published PKGBUILD)                                  |
+| `POLL_INTERVAL_SECONDS`   | How often to check for updates, in seconds (default: `3600`)                      |
+| `NPROC`                   | CPU cores for compilation, also caps the container's CPU quota (default: `4`)     |
 
 **3) Start the daemon**
 ```bash
