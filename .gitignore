@@ -1,20 +1,26 @@
 # Secrets
 .env
 
-# Build artifacts
-state/artifacts/
-state/build.log
-state/cron.log
+# Build state — artifacts are large binaries, last_version is runtime state
+state/
 
-# AUR SSH key (if stored locally)
+# AUR clones — managed at runtime by the container, not part of the repo
+webkit2gtk/
+webkit2gtk-bin/
+
+# makepkg build leftovers (if they end up in the workspace)
+*.pkg.tar.zst
+*.pkg.tar.zst.sig
+src/
+pkg/
+
+# AUR SSH keys if stored locally
 *.pem
 *.key
 id_rsa
 id_ed25519
 
-# Docker
-.docker/
-
-# Misc
-*.tmp
+# Editor
 *.swp
+*.tmp
+.DS_Store
