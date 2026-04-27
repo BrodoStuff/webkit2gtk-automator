@@ -33,23 +33,18 @@ die() {
 : "${AUR_MAINTAINER_EMAIL:?AUR_MAINTAINER_EMAIL is not set}"
 
 # Authenticate gh CLI
-echo "${GITHUB_TOKEN}" | gh auth login --with-token
+# GITHUB_TOKEN is already in the environment and picked up by gh automatically
 
-# Find the main webkit2gtk package (not -docs)
+# Find the main webkit2gtk package only (exclude -docs and -debug variants)
 log "Looking for built package in ${ARTIFACTS_DIR}"
-# We want webkit2gtk-<ver>-<rel>-x86_64.pkg.tar.zst, NOT webkit2gtk-docs-*
-pkg_file=$(find "${ARTIFACTS_DIR}" -maxdepth 1 \
-    -name 'webkit2gtk-*.pkg.tar.zst' \
-    ! -name 'webkit2gtk-docs-*' \
-    -print | sort -V | tail -n1)
-
-[[ -n "${pkg_file}" ]] || die "No webkit2gtk .pkg.tar.zst found in ${ARTIFACTS_DIR}"
-log "Found package: ${pkg_file}"
-# Derive version from the built PKGBUILD
 pkgver=$(bash -c "source ${SRC_PKGBUILD}; echo \${pkgver}")
 pkgrel=$(bash -c "source ${SRC_PKGBUILD}; echo \${pkgrel}")
 full_version="${pkgver}-${pkgrel}"
 log "Package version: ${full_version}"
+
+pkg_file="${ARTIFACTS_DIR}/webkit2gtk-${pkgver}-${pkgrel}-x86_64.pkg.tar.zst"
+[[ -f "${pkg_file}" ]] || die "Expected artifact not found: ${pkg_file}"
+log "Found package: ${pkg_file}"
 # Compute sha256sum of the artifact
 sha256=$(sha256sum "${pkg_file}" | awk '{print $1}')
 log "sha256sum: ${sha256}"
@@ -61,12 +56,16 @@ release_title="webkit2gtk ${full_version}"
 
 log "Creating/updating GitHub release ${release_tag}"
 
-# Create the release if it doesn't exist; ignore error if it already does
-gh release create "${release_tag}" \
-    --repo "${GITHUB_REPO}" \
-    --title "${release_title}" \
-    --notes "Automated build of webkit2gtk ${full_version}" \
-    2>/dev/null || log "Release ${release_tag} already exists, proceeding to upload asset"
+# Create the release if it doesn't exist
+if gh release view "${release_tag}" --repo "${GITHUB_REPO}" &>/dev/null; then
+    log "Release ${release_tag} already exists, proceeding to upload asset"
+else
+    log "Creating GitHub release ${release_tag}"
+    gh release create "${release_tag}" \
+        --repo "${GITHUB_REPO}" \
+        --title "${release_title}" \
+        --notes "Automated build of webkit2gtk ${full_version}"
+fi
 
 # Upload the package (--clobber overwrites an existing asset with the same name)
 log "Uploading ${pkg_filename} to release ${release_tag}"

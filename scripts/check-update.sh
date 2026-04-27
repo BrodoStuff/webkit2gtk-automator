@@ -73,7 +73,7 @@ log "Running publish"
 if "${SCRIPT_DIR}/publish.sh"; then
     log "Publish succeeded"
 else
-    log "ERROR: Publish failed"
+    log "ERROR: Publish failed, exit code: $?"
     exit 1
 fi
 

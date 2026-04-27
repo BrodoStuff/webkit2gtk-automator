@@ -8,6 +8,16 @@
 
 set -euo pipefail
 
+# Load .env so all variables are available both here (root) and in child
+# processes running as builduser. Docker's env_file only sets variables for
+# the initial process; sudo drops them by default.
+if [[ -f /workspace/.env ]]; then
+    set -a
+    # shellcheck source=/dev/null
+    source /workspace/.env
+    set +a
+fi
+
 POLL_INTERVAL_SECONDS="${POLL_INTERVAL_SECONDS:-3600}"
 
 # Set up AUR SSH key
@@ -25,21 +35,21 @@ else
 fi
 
 # Set git identity for builduser
-sudo -u builduser git config --global user.name  "${AUR_MAINTAINER_NAME:-webkit2gtk-automator}"
-sudo -u builduser git config --global user.email "${AUR_MAINTAINER_EMAIL:-noreply@localhost}"
+sudo -u builduser HOME=/home/builduser git config --global user.name  "${AUR_MAINTAINER_NAME:-webkit2gtk-automator}"
+sudo -u builduser HOME=/home/builduser git config --global user.email "${AUR_MAINTAINER_EMAIL:-noreply@localhost}"
 
 # Import WebKitGTK PGP signing keys into builduser's keyring
 # makepkg verifies the source tarball signature against these keys.
 # Try the bundled local keys first (no network needed), then fall back to keyservers.
 echo "[entrypoint] Importing WebKitGTK PGP signing keys"
 if ls /workspace/webkit2gtk/keys/pgp/*.asc &>/dev/null; then
-    sudo -u builduser gpg --import /workspace/webkit2gtk/keys/pgp/*.asc
+    sudo -u builduser HOME=/home/builduser gpg --import /workspace/webkit2gtk/keys/pgp/*.asc
     echo "[entrypoint] PGP keys imported from local bundle"
 else
-    sudo -u builduser gpg --keyserver keyserver.ubuntu.com --recv-keys \
+    sudo -u builduser HOME=/home/builduser gpg --keyserver keyserver.ubuntu.com --recv-keys \
         5AA3BC334FD7E3369E7C77B291C559DBE4C9123B \
         013A0127AC9C65B34FFA62526C1009B693975393 || \
-    sudo -u builduser gpg --keyserver hkps://keys.openpgp.org --recv-keys \
+    sudo -u builduser HOME=/home/builduser gpg --keyserver hkps://keys.openpgp.org --recv-keys \
         5AA3BC334FD7E3369E7C77B291C559DBE4C9123B \
         013A0127AC9C65B34FFA62526C1009B693975393
     echo "[entrypoint] PGP keys imported from keyserver"
@@ -47,7 +57,7 @@ fi
 
 # Drop to builduser and start the polling loop
 echo "[entrypoint] Starting polling loop, interval: ${POLL_INTERVAL_SECONDS}s"
-exec sudo -u builduser bash -c '
+exec sudo -u builduser --preserve-env HOME=/home/builduser bash -c '
     set -euo pipefail
     POLL_INTERVAL_SECONDS="'"${POLL_INTERVAL_SECONDS}"'"
     while true; do

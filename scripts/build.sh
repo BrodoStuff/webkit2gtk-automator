@@ -22,6 +22,20 @@ fi
 
 mkdir -p "${ARTIFACTS_DIR}"
 
+# Skip rebuild if artifacts for this version already exist
+pkgver=$(bash -c "source ${SRC_DIR}/PKGBUILD; echo \${pkgver}")
+pkgrel=$(bash -c "source ${SRC_DIR}/PKGBUILD; echo \${pkgrel}")
+existing=$(find "${ARTIFACTS_DIR}" -maxdepth 1 \
+    -name "webkit2gtk-${pkgver}-${pkgrel}-*.pkg.tar.zst" \
+    ! -name 'webkit2gtk-docs-*' \
+    -print | head -n1)
+
+if [[ -n "${existing}" ]]; then
+    log "Artifacts for ${pkgver}-${pkgrel} already exist, skipping build"
+    log "Using cached: $(basename "${existing}")"
+    exit 0
+fi
+
 # Clean any leftover build artifacts from a previous run
 log "Cleaning previous build artifacts in ${SRC_DIR}"
 # makepkg leaves behind src/, pkg/ and the .pkg.tar.zst files
