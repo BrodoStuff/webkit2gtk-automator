@@ -1,0 +1,66 @@
+name: Check for webkit2gtk update
+
+on:
+  # schedule:
+    # Run every hour
+    # - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Poll AUR for new version
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write   # required to trigger workflow_dispatch on build.yml
+
+    steps:
+      - name: Fetch latest AUR version
+        id: aur
+        run: |
+          response=$(curl -fsSL "https://aur.archlinux.org/rpc/v5/info/webkit2gtk")
+          aur_version=$(echo "${response}" | jq -r '.results[0].Version')
+          if [[ -z "${aur_version}" || "${aur_version}" == "null" ]]; then
+            echo "ERROR: Failed to parse version from AUR response: ${response}" >&2
+            exit 1
+          fi
+          echo "AUR version: ${aur_version}"
+          echo "version=${aur_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch last published version from GitHub Releases
+        id: last
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get the tag of the latest release; strip the leading 'v'
+          tag=$(gh release list \
+            --repo "${{ github.repository }}" \
+            --limit 1 \
+            --json tagName \
+            --jq '.[0].tagName // ""')
+          last_version="${tag#v}"
+          echo "Last published version: ${last_version:-<none>}"
+          echo "version=${last_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Decide whether to build
+        id: decision
+        run: |
+          aur="${{ steps.aur.outputs.version }}"
+          last="${{ steps.last.outputs.version }}"
+          if [[ "${aur}" == "${last}" ]]; then
+            echo "Already up to date (${aur}), nothing to do"
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "New version detected: ${aur} (was: ${last:-<none>})"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Trigger build workflow
+        if: steps.decision.outputs.should_build == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run build.yml \
+            --repo "${{ github.repository }}" \
+            --field aur_version="${{ steps.aur.outputs.version }}"
+          echo "Dispatched build.yml for version ${{ steps.aur.outputs.version }}"

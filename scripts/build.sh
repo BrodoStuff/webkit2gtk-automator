@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # build.sh
-# Runs INSIDE the Docker container as builduser.
+# Runs as builduser (inside Docker or a GitHub Actions container job).
 # Builds webkit2gtk from the AUR PKGBUILD and copies the resulting
-# .pkg.tar.zst packages to /workspace/state/artifacts/.
+# .pkg.tar.zst packages to <workspace>/state/artifacts/.
+#
+# Works in both environments:
+#   Docker / local:   WORKSPACE=/workspace  (default)
+#   GitHub Actions:   WORKSPACE=$GITHUB_WORKSPACE (set by runner)
 
 set -euo pipefail
 
-WORKSPACE=/workspace
+WORKSPACE="${GITHUB_WORKSPACE:-/workspace}"
 SRC_DIR="${WORKSPACE}/webkit2gtk"
 ARTIFACTS_DIR="${WORKSPACE}/state/artifacts"
 

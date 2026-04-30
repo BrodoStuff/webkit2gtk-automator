@@ -1,0 +1,176 @@
+name: Build and publish webkit2gtk
+
+on:
+  workflow_dispatch:
+    inputs:
+      aur_version:
+        description: 'Full AUR version string to build (e.g. 2.46.3-1)'
+        required: true
+        type: string
+
+jobs:
+  build-and-publish:
+    name: Build webkit2gtk ${{ inputs.aur_version }}
+    runs-on: ubuntu-latest-96-cores
+    container:
+      image: archlinux:latest
+      # Needed so makepkg can use FUSE/user namespaces inside the container
+      options: --privileged
+
+    permissions:
+      contents: write  # create GitHub Releases and upload assets
+
+    env:
+      GITHUB_REPO: ${{ github.repository }}
+      AUR_PACKAGE_NAME: webkit2gtk-bin
+      AUR_MAINTAINER_NAME: ${{ secrets.AUR_MAINTAINER_NAME }}
+      AUR_MAINTAINER_EMAIL: ${{ secrets.AUR_MAINTAINER_EMAIL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed \
+            base-devel \
+            git \
+            sudo \
+            curl \
+            jq \
+            openssh \
+            github-cli \
+            clang \
+            cmake \
+            gi-docgen \
+            glib2-devel \
+            gobject-introspection \
+            gperf \
+            gst-plugins-bad \
+            lld \
+            ninja \
+            python \
+            ruby \
+            ruby-stdlib \
+            systemd \
+            unifdef \
+            wayland-protocols \
+            at-spi2-core \
+            atk \
+            bubblewrap \
+            cairo \
+            enchant \
+            expat \
+            fontconfig \
+            freetype2 \
+            gdk-pixbuf2 \
+            glib2 \
+            glibc \
+            gst-plugins-bad-libs \
+            gst-plugins-base-libs \
+            gstreamer \
+            gtk3 \
+            harfbuzz \
+            harfbuzz-icu \
+            hyphen \
+            icu \
+            lcms2 \
+            libatomic \
+            libavif \
+            libdrm \
+            libegl \
+            libepoxy \
+            libgcrypt \
+            libgl \
+            libjpeg-turbo \
+            libjxl \
+            libmanette \
+            libpng \
+            libseccomp \
+            libsecret \
+            libsoup \
+            libsystemd \
+            libtasn1 \
+            libwebp \
+            libx11 \
+            libxml2 \
+            libxslt \
+            mesa \
+            openjpeg2 \
+            pango \
+            sqlite \
+            ttf-dejavu \
+            wayland \
+            woff2 \
+            xdg-dbus-proxy \
+            zlib
+
+      - name: Create builduser (makepkg refuses to run as root)
+        run: |
+          useradd -m -G wheel builduser
+          echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+          # Allow builduser to write to the workspace
+          chown -R builduser:builduser "$GITHUB_WORKSPACE"
+          git config --system --add safe.directory '*'
+
+      - name: Set up AUR SSH key
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          SSH_DIR=/home/builduser/.ssh
+          mkdir -p "${SSH_DIR}"
+          printf '%s\n' "${AUR_SSH_KEY}" > "${SSH_DIR}/aur_id_rsa"
+          chown -R builduser:builduser "${SSH_DIR}"
+          chmod 700 "${SSH_DIR}"
+          chmod 600 "${SSH_DIR}/aur_id_rsa"
+          printf 'Host aur.archlinux.org\n  User aur\n  IdentityFile /home/builduser/.ssh/aur_id_rsa\n  StrictHostKeyChecking no\n' \
+            > "${SSH_DIR}/config"
+          chmod 600 "${SSH_DIR}/config"
+
+      - name: Configure git identity for builduser
+        run: |
+          sudo -u builduser HOME=/home/builduser git config --global user.name  "${AUR_MAINTAINER_NAME}"
+          sudo -u builduser HOME=/home/builduser git config --global user.email "${AUR_MAINTAINER_EMAIL}"
+
+      - name: Import WebKitGTK PGP signing keys
+        run: |
+          sudo -u builduser HOME=/home/builduser gpg \
+            --keyserver keyserver.ubuntu.com \
+            --recv-keys \
+              5AA3BC334FD7E3369E7C77B291C559DBE4C9123B \
+              013A0127AC9C65B34FFA62526C1009B693975393 || \
+          sudo -u builduser HOME=/home/builduser gpg \
+            --keyserver hkps://keys.openpgp.org \
+            --recv-keys \
+              5AA3BC334FD7E3369E7C77B291C559DBE4C9123B \
+              013A0127AC9C65B34FFA62526C1009B693975393
+
+      - name: Clone webkit2gtk from AUR
+        run: |
+          sudo -u builduser HOME=/home/builduser \
+            git clone https://aur.archlinux.org/webkit2gtk.git "${GITHUB_WORKSPACE}/webkit2gtk"
+
+      - name: Build webkit2gtk
+        env:
+          NPROC: 96
+        run: |
+          sudo -u builduser \
+            HOME=/home/builduser \
+            GITHUB_WORKSPACE="${GITHUB_WORKSPACE}" \
+            NPROC="${NPROC}" \
+            bash "${GITHUB_WORKSPACE}/scripts/build.sh"
+
+      - name: Publish to GitHub Releases and AUR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sudo -u builduser \
+            HOME=/home/builduser \
+            GITHUB_WORKSPACE="${GITHUB_WORKSPACE}" \
+            GITHUB_TOKEN="${GITHUB_TOKEN}" \
+            GITHUB_REPO="${GITHUB_REPO}" \
+            AUR_PACKAGE_NAME="${AUR_PACKAGE_NAME}" \
+            AUR_MAINTAINER_NAME="${AUR_MAINTAINER_NAME}" \
+            AUR_MAINTAINER_EMAIL="${AUR_MAINTAINER_EMAIL}" \
+            bash "${GITHUB_WORKSPACE}/scripts/publish.sh"

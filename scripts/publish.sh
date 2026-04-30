@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # publish.sh
-# Runs INSIDE the Docker container as builduser.
+# Runs as builduser (inside Docker or a GitHub Actions container job).
 #
 # Steps:
 #   1. Find the built webkit2gtk .pkg.tar.zst in state/artifacts/
@@ -8,10 +8,14 @@
 #   3. Update webkit2gtk-bin/PKGBUILD with the new version, URL and sha256sum
 #   4. Regenerate webkit2gtk-bin/.SRCINFO
 #   5. Commit and push webkit2gtk-bin/ to the AUR
+#
+# Works in both environments:
+#   Docker / local:   WORKSPACE=/workspace  (default)
+#   GitHub Actions:   WORKSPACE=$GITHUB_WORKSPACE (set by runner)
 
 set -euo pipefail
 
-WORKSPACE=/workspace
+WORKSPACE="${GITHUB_WORKSPACE:-/workspace}"
 ARTIFACTS_DIR="${WORKSPACE}/state/artifacts"
 BIN_PKG_DIR="${WORKSPACE}/webkit2gtk-bin"
 SRC_PKGBUILD="${WORKSPACE}/webkit2gtk/PKGBUILD"

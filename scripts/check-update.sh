@@ -1,26 +1,38 @@
 #!/usr/bin/env bash
 # check-update.sh
-# Polls the AUR RPC API for the latest webkit2gtk version.
-# If a newer version is detected, runs build.sh then publish.sh directly.
-# Called by entrypoint.sh on a loop — runs entirely inside the container.
+# Queries the AUR RPC API for the latest webkit2gtk version and compares it
+# against the last published version on GitHub Releases.
+#
+# Outputs:
+#   aur_version=<string>   — latest AUR version string
+#   should_build=true|false — whether a new build is needed
+#
+# When run inside a GitHub Actions step, GITHUB_OUTPUT is set and the outputs
+# are written there automatically. When run locally, they are printed to stdout.
+#
+# Required env vars (only when comparing against GitHub Releases):
+#   GITHUB_TOKEN  — a token with 'contents: read' on GITHUB_REPO
+#   GITHUB_REPO   — owner/repo, e.g. Brodino96/webkit2gtk-automator
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-# Paths
-STATE_DIR="${ROOT_DIR}/state"
-LAST_VERSION_FILE="${STATE_DIR}/last_version"
-mkdir -p "${STATE_DIR}"
-
-# Logging
-# Output goes to stdout so docker compose logs picks it up automatically.
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] [check-update] $*"
 }
 
-# Fetch latest AUR version
+set_output() {
+    local key="$1"
+    local value="$2"
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "${key}=${value}" >> "${GITHUB_OUTPUT}"
+    else
+        log "OUTPUT: ${key}=${value}"
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# 1. Fetch latest AUR version
+# ---------------------------------------------------------------------------
 AUR_API_URL="https://aur.archlinux.org/rpc/v5/info/webkit2gtk"
 
 log "Querying AUR for webkit2gtk"
@@ -33,50 +45,31 @@ if [[ -z "${aur_version}" || "${aur_version}" == "null" ]]; then
 fi
 
 log "AUR version: ${aur_version}"
+set_output "aur_version" "${aur_version}"
 
-# Compare with last built version
-last_version=""
-if [[ -f "${LAST_VERSION_FILE}" ]]; then
-    last_version=$(cat "${LAST_VERSION_FILE}")
-fi
+# ---------------------------------------------------------------------------
+# 2. Fetch last published version from GitHub Releases
+# ---------------------------------------------------------------------------
+: "${GITHUB_TOKEN:?GITHUB_TOKEN is not set}"
+: "${GITHUB_REPO:?GITHUB_REPO is not set}"
 
-log "Last built version: ${last_version:-<none>}"
+log "Fetching latest GitHub Release tag from ${GITHUB_REPO}"
+tag=$(gh release list \
+    --repo "${GITHUB_REPO}" \
+    --limit 1 \
+    --json tagName \
+    --jq '.[0].tagName // ""' 2>/dev/null || echo "")
 
+last_version="${tag#v}"
+log "Last published version: ${last_version:-<none>}"
+
+# ---------------------------------------------------------------------------
+# 3. Compare
+# ---------------------------------------------------------------------------
 if [[ "${aur_version}" == "${last_version}" ]]; then
-    log "Already up to date, nothing to do"
-    exit 0
-fi
-
-log "New version detected: ${aur_version} (was: ${last_version:-<none>}), starting build"
-
-# Update the webkit2gtk AUR clone
-WEBKIT2GTK_DIR="${ROOT_DIR}/webkit2gtk"
-if [[ -d "${WEBKIT2GTK_DIR}/.git" ]]; then
-    log "Pulling latest PKGBUILD from AUR"
-    git -C "${WEBKIT2GTK_DIR}" pull --ff-only
+    log "Already up to date (${aur_version}), nothing to do"
+    set_output "should_build" "false"
 else
-    log "Cloning webkit2gtk from AUR"
-    git clone https://aur.archlinux.org/webkit2gtk.git "${WEBKIT2GTK_DIR}"
+    log "New version detected: ${aur_version} (was: ${last_version:-<none>})"
+    set_output "should_build" "true"
 fi
-
-# Build
-log "Running build"
-if "${SCRIPT_DIR}/build.sh"; then
-    log "Build succeeded"
-else
-    log "ERROR: Build failed, aborting"
-    exit 1
-fi
-
-# Publish
-log "Running publish"
-if "${SCRIPT_DIR}/publish.sh"; then
-    log "Publish succeeded"
-else
-    log "ERROR: Publish failed, exit code: $?"
-    exit 1
-fi
-
-# Record new version
-echo "${aur_version}" > "${LAST_VERSION_FILE}"
-log "Updated last_version to ${aur_version}, done"
