@@ -6,6 +6,10 @@ PKG_PATH="${2:?Usage: update-aur.sh <version> <pkg_path> <asset_url>}"
 ASSET_URL="${3:?Usage: update-aur.sh <version> <pkg_path> <asset_url>}"
 AUR_DIR="/build/webkit2gtk-bin"
 
+# VERSION is in the format pkgver-pkgrel (e.g. 2.46.5-2)
+PKGVER="${VERSION%-*}"
+PKGREL="${VERSION##*-}"
+
 echo "Configuring AUR SSH key..."
 mkdir -p /root/.ssh
 echo "${AUR_SSH_KEY:?AUR_SSH_KEY environment variable is not set}" > /root/.ssh/aur
@@ -29,8 +33,8 @@ echo "sha256: $SHA256"
 echo "Updating PKBUILD..."
 cd "$AUR_DIR"
 
-sed -i "s|^pkgver=.*|pkgver=${VERSION}|" PKGBUILD
-sed -i "s|^pkgrel=.*|pkgrel=1|" PKGBUILD
+sed -i "s|^pkgver=.*|pkgver=${PKGVER}|" PKGBUILD
+sed -i "s|^pkgrel=.*|pkgrel=${PKGREL}|" PKGBUILD
 sed -i "s|^source=.*|source=(\"${ASSET_URL}\")|" PKGBUILD
 sed -i "s|^sha256sums=.*|sha256sums=(\"${SHA256}\")|" PKGBUILD
 
