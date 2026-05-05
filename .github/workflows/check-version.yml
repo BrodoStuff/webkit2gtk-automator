@@ -20,7 +20,7 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: bash scripts/check-version.sh
+        run: bash scripts/check-update.sh
 
       - name: Trigger build-release workflow
         if: steps.check.outputs.trigger_version != ''
