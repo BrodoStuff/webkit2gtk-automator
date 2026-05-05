@@ -1,0 +1,32 @@
+name: Version check
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Check AUR against release version
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/check-version.sh
+
+      - name: Trigger build-release workflow
+        if: steps.check.outputs.trigger_version != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run build-release.yml \
+            --repo "${{ github.repository }}" \
+            --field version="${{ steps.check.outputs.trigger_version }}"

@@ -1,0 +1,44 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "webkit2gtk version to build (e.g. 1.1.1)"
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest-64-cores
+    container:
+      image: archlinux:latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6.0.2
+
+      - name: Build webkit2gtk package
+        id: build
+        run: bash scripts/build-package.sh
+
+      - name: Create GitHub release and upload artifact
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/create-release.sh \
+            "${{ inputs.version }}" \
+            "${{ steps.build.outputs.pkg_path }}"
+
+      - name: Update webkit2gtk-bin AUR package
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+        run: |
+          bash scripts/update-aur.sh \
+            "${{ inputs.version }}" \
+            "${{ steps.build.outputs.pkg_path }}" \
+            "${{ steps.release.outputs.asset_url }}"
