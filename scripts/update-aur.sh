@@ -32,7 +32,7 @@ cd "$AUR_DIR"
 sed -i "s|^pkgver=.*|pkgver=${VERSION}|" PKGBUILD
 sed -i "s|^pkgrel=.*|pkgrel=1|" PKGBUILD
 sed -i "s|^source=.*|source=(\"${ASSET_URL}\")|" PKGBUILD
-sed -i "s|^sha256sums=.*|sha256sums=(\"${SHA256}\")|" PKGBUILDù
+sed -i "s|^sha256sums=.*|sha256sums=(\"${SHA256}\")|" PKGBUILD
 
 echo "Regenerating .SRCINFO..."
 chown -R builder:builder "$AUR_DIR"
