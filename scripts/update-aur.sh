@@ -21,7 +21,7 @@ cat >> /root/.ssh/config <<EOF
     StrictHostKeyChecking accept-new
 EOF
 
-ssh-keyscan aur.archlinux.org >> root/.ssh/known_hosts
+ssh-keyscan aur.archlinux.org >> /root/.ssh/known_hosts
 
 echo "Cloning webkit2gtk-bin AUR repo"
 git clone ssh://aur@aur.archlinux.org/webkit2gtk-bin.git "$AUR_DIR"
