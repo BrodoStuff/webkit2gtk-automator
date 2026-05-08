@@ -26,6 +26,12 @@ echo "Cloning webkit2gtk AUR repo..."
 git clone https://aur.archlinux.org/webkit2gtk.git "$BUILD_DIR"
 chown -R builder:builder "$BUILD_DIR"
 
+echo "Importing PGP keys from PKGBUILD..."
+KEYS=$(bash -c "source $BUILD_DIR/PKGBUILD && echo \${validpgpkeys[@]}")
+for key in $KEYS; do
+    su builder -c "gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys $key"
+done
+
 echo "Building package..."
 su builder -c "cd $BUILD_DIR && makepkg -s --noconfirm"
 
